@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0F0F14" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MoneyMgr" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Money Manager</title>
+
+  <!-- PWA Manifest inline via data URI -->
+  <link rel="manifest" href="data:application/json,{
+    %22name%22:%22Money%20Manager%22,
+    %22short_name%22:%22MoneyMgr%22,
+    %22start_url%22:%22.%22,
+    %22display%22:%22standalone%22,
+    %22background_color%22:%22%230F0F14%22,
+    %22theme_color%22:%22%230F0F14%22,
+    %22orientation%22:%22portrait%22,
+    %22icons%22:[{%22src%22:%22data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%231E1A3A'/%3E%3Ctext x='96' y='130' font-size='100' text-anchor='middle'%3E%F0%9F%92%B0%3C/text%3E%3C/svg%3E%22,%22sizes%22:%22192x192%22,%22type%22:%22image/svg+xml%22}]
+  }">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #0F0F14;
+      --surface: #16161F;
+      --card: #1E1E28;
+      --card2: #252530;
+      --border: #2A2A38;
+      --text: #FFFFFF;
+      --muted: #888888;
+      --dim: #555555;
+      --accent: #7C6EFA;
+      --green: #55EFC4;
+      --red: #FF6B6B;
+      --yellow: #F7B731;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      height: 100%; width: 100%;
+      background: var(--bg);
+      font-family: 'DM Sans', sans-serif;
+      color: var(--text);
+      overflow: hidden;
+      position: fixed;
+    }
+    #app {
+      height: 100%; width: 100%;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .mono { font-family: 'Space Mono', monospace; }
+
+    /* Scrollable area */
+    #scroll-area {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: calc(70px + var(--safe-bottom));
+    }
+    ::-webkit-scrollbar { width: 0; }
+
+    /* Status bar spacer */
+    .status-bar {
+      padding: 12px 20px 0;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-shrink: 0;
+    }
+    .status-bar span { color: var(--muted); font-size: 12px; font-family: 'Space Mono', monospace; }
+
+    /* Header */
+    .page-header {
+      padding: 14px 20px 0;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+    .page-header p { color: var(--muted); font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+    .avatar {
+      width: 42px; height: 42px; border-radius: 21px;
+      background: linear-gradient(135deg, #7C6EFA, #A855F7);
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+
+    /* Balance Card */
+    .balance-card {
+      margin: 16px 16px 0;
+      background: linear-gradient(135deg, #1E1A3A 0%, #2D2060 50%, #1A1535 100%);
+      border-radius: 28px; padding: 22px 22px 18px;
+      border: 1px solid rgba(124,110,250,0.2);
+      position: relative; overflow: hidden;
+    }
+    .balance-card::before {
+      content: ''; position: absolute; top: -30px; right: -30px;
+      width: 120px; height: 120px; border-radius: 50%;
+      background: rgba(124,110,250,0.15);
+    }
+    .balance-card::after {
+      content: ''; position: absolute; bottom: -20px; left: 40px;
+      width: 80px; height: 80px; border-radius: 50%;
+      background: rgba(168,85,247,0.1);
+    }
+    .balance-label { color: rgba(255,255,255,0.5); font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; }
+    .balance-amount { font-family: 'Space Mono', monospace; font-size: 36px; font-weight: 700; margin: 6px 0 2px; letter-spacing: -1px; }
+    .balance-sub { color: rgba(255,255,255,0.4); font-size: 12px; }
+    .balance-row { display: flex; gap: 12px; margin-top: 16px; }
+    .balance-stat {
+      flex: 1; border-radius: 14px; padding: 10px 12px;
+    }
+    .balance-stat.dep { background: rgba(85,239,196,0.12); border: 1px solid rgba(85,239,196,0.2); }
+    .balance-stat.spt { background: rgba(255,107,107,0.12); border: 1px solid rgba(255,107,107,0.2); }
+    .balance-stat p { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; color: rgba(255,255,255,0.45); }
+    .balance-stat h4 { font-family: 'Space Mono', monospace; font-size: 15px; font-weight: 700; margin-top: 4px; }
+    .balance-stat.dep h4 { color: var(--green); }
+    .balance-stat.spt h4 { color: var(--red); }
+
+    /* Quick Actions */
+    .quick-actions { display: flex; gap: 10px; padding: 14px 16px 0; }
+    .qa-btn {
+      flex: 1; background: var(--card); border: none; border-radius: 18px;
+      padding: 14px 6px; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 7px;
+      transition: transform 0.1s, opacity 0.1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .qa-btn:active { transform: scale(0.94); opacity: 0.8; }
+    .qa-icon {
+      width: 38px; height: 38px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center; font-size: 18px;
+    }
+    .qa-btn span { color: var(--muted); font-size: 11px; font-weight: 600; }
+
+    /* Section header */
+    .section-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 18px 20px 10px;
+    }
+    .section-header h3 { font-size: 16px; font-weight: 700; }
+    .section-header span { color: var(--dim); font-size: 12px; }
+
+    /* Empty state */
+    .empty-state { text-align: center; padding: 30px 0; color: var(--dim); }
+    .empty-state .ei { font-size: 38px; margin-bottom: 8px; }
+    .empty-state p { font-size: 13px; }
+
+    /* Source Card */
+    .source-list { padding: 0 16px; display: flex; flex-direction: column; gap: 10px; }
+    .source-card {
+      background: var(--card); border-radius: 20px; padding: 16px;
+      transition: transform 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .source-card:active { transform: scale(0.98); }
+    .source-top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .source-icon {
+      width: 44px; height: 44px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+    }
+    .source-info { flex: 1; min-width: 0; }
+    .source-info h4 {
+      font-size: 15px; font-weight: 700;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .source-info p { font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700; margin-top: 2px; }
+    .del-btn {
+      background: none; border: none; color: var(--dim);
+      font-size: 18px; cursor: pointer; padding: 4px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .source-stats { display: flex; gap: 8px; margin-bottom: 10px; }
+    .source-stat { flex: 1; background: var(--card2); border-radius: 10px; padding: 8px 10px; }
+    .source-stat p { color: var(--dim); font-size: 10px; font-weight: 600; letter-spacing: 0.5px; }
+    .source-stat h5 { font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700; margin-top: 3px; }
+    .source-stat.d h5 { color: var(--green); }
+    .source-stat.s h5 { color: var(--red); }
+    .progress-bar-bg { height: 5px; background: var(--card2); border-radius: 10px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; border-radius: 10px; transition: width 0.4s ease; }
+    .progress-label { color: var(--dim); font-size: 10px; margin-top: 4px; }
+
+    /* History Filters */
+    .filter-scroll {
+      display: flex; gap: 8px;
+      overflow-x: auto; padding: 0 16px 0;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .filter-scroll::-webkit-scrollbar { display: none; }
+    .filter-chip {
+      flex-shrink: 0; border: none; border-radius: 20px;
+      padding: 7px 14px; font-size: 12px; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; gap: 6px;
+      transition: transform 0.1s, opacity 0.1s;
+      -webkit-tap-highlight-color: transparent;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .filter-chip:active { transform: scale(0.93); }
+    .filter-chip.all-chip {
+      background: var(--accent); color: #fff;
+    }
+    .filter-chip.all-chip.inactive {
+      background: var(--card2); color: var(--muted);
+    }
+    .filter-chip.src-chip {
+      background: var(--card2); color: var(--muted);
+    }
+    .filter-chip.src-chip.active {
+      color: #fff;
+    }
+    .filter-type-row {
+      display: flex; gap: 8px; padding: 10px 16px 0;
+    }
+    .type-chip {
+      flex: 1; border: none; border-radius: 12px;
+      padding: 8px 0; font-size: 12px; font-weight: 600;
+      cursor: pointer; font-family: 'DM Sans', sans-serif;
+      background: var(--card2); color: var(--muted);
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.1s;
+    }
+    .type-chip:active { transform: scale(0.95); }
+    .type-chip.active-dep { background: rgba(85,239,196,0.15); color: var(--green); border: 1px solid rgba(85,239,196,0.3); }
+    .type-chip.active-spt { background: rgba(255,107,107,0.15); color: var(--red); border: 1px solid rgba(255,107,107,0.3); }
+    .type-chip.active-all { background: rgba(124,110,250,0.15); color: var(--accent); border: 1px solid rgba(124,110,250,0.3); }
+    .filter-summary {
+      padding: 10px 16px 2px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .filter-summary span { color: var(--dim); font-size: 12px; }
+    .filter-summary strong { color: var(--muted); font-size: 12px; }
+
+    /* History */
+    .tx-list { padding: 0 16px; display: flex; flex-direction: column; gap: 8px; }
+
+    /* Swipe-to-delete wrapper */
+    .tx-wrapper {
+      position: relative; overflow: hidden; border-radius: 16px;
+    }
+    .tx-delete-bg {
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, #C0392B, #FF6B6B);
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: flex-end;
+      padding-right: 20px; gap: 8px;
+      pointer-events: none;
+    }
+    .tx-delete-bg span { font-size: 20px; }
+    .tx-delete-bg p { color: #fff; font-size: 13px; font-weight: 700; }
+    .tx-card {
+      background: var(--card); border-radius: 16px; padding: 13px 14px;
+      display: flex; align-items: center; gap: 12px;
+      position: relative; z-index: 1;
+      transition: transform 0.18s ease;
+      touch-action: pan-y;
+      user-select: none;
+    }
+    .tx-card.swiping { transition: none; }
+
+    /* Delete confirm sheet */
+    .del-confirm {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      display: flex; align-items: flex-end; justify-content: center;
+      z-index: 300; animation: fadeIn 0.18s ease;
+    }
+    .del-confirm-box {
+      width: 100%; max-width: 500px;
+      background: #1A1A24;
+      border-radius: 28px 28px 0 0;
+      padding: 20px 20px calc(28px + var(--safe-bottom));
+      border: 1px solid var(--border); border-bottom: none;
+      animation: slideUp 0.22s cubic-bezier(0.34,1.1,0.64,1);
+    }
+    .del-confirm-box .handle { width: 40px; height: 4px; background: #333; border-radius: 2px; margin: 0 auto 16px; }
+    .del-confirm-box h3 { font-size: 17px; font-weight: 700; margin-bottom: 6px; color: var(--red); }
+    .del-confirm-box p { font-size: 13px; color: var(--muted); margin-bottom: 18px; line-height: 1.5; }
+    .del-tx-preview {
+      background: var(--card2); border-radius: 14px; padding: 12px 14px;
+      display: flex; align-items: center; gap: 10px; margin-bottom: 18px;
+    }
+    .del-tx-preview span.di { font-size: 22px; }
+    .del-tx-preview div { flex: 1; }
+    .del-tx-preview div h4 { font-size: 14px; font-weight: 600; }
+    .del-tx-preview div p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .del-tx-preview span.da { font-family: 'Space Mono', monospace; font-size: 15px; font-weight: 700; }
+
+    /* Edit sheet */
+    .edit-sheet {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      display: flex; align-items: flex-end; justify-content: center;
+      z-index: 300; animation: fadeIn 0.18s ease;
+    }
+    .edit-sheet-box {
+      width: 100%; max-width: 500px;
+      background: #1A1A24;
+      border-radius: 28px 28px 0 0;
+      padding: 20px 20px calc(28px + var(--safe-bottom));
+      border: 1px solid var(--border); border-bottom: none;
+      animation: slideUp 0.22s cubic-bezier(0.34,1.1,0.64,1);
+    }
+    .edit-sheet-box .handle { width: 40px; height: 4px; background: #333; border-radius: 2px; margin: 0 auto 16px; }
+    .edit-sheet-box h3 { font-size: 17px; font-weight: 700; margin-bottom: 16px; color: var(--accent); }
+    .edit-sheet-box label { color: var(--muted); font-size: 13px; display: block; margin-bottom: 7px; }
+    .edit-sheet-box input {
+      width: 100%; background: var(--card2);
+      border: 1px solid #333; border-radius: 14px;
+      padding: 13px 15px; color: var(--text);
+      font-size: 15px; font-family: 'DM Sans', sans-serif;
+      outline: none; margin-bottom: 14px;
+    }
+    .edit-sheet-box input.big { font-size: 24px; font-family: 'Space Mono', monospace; }
+    .edit-sheet-box input:focus { border-color: var(--accent); }
+    .tx-card {
+      background: var(--card); border-radius: 16px; padding: 13px 14px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .tx-icon {
+      width: 40px; height: 40px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .tx-icon.dep { background: rgba(85,239,196,0.15); }
+    .tx-icon.spt { background: rgba(255,107,107,0.15); }
+    .tx-info { flex: 1; min-width: 0; }
+    .tx-info h4 { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tx-info p { color: var(--dim); font-size: 11px; margin-top: 2px; }
+    .tx-amount { font-family: 'Space Mono', monospace; font-size: 15px; font-weight: 700; flex-shrink: 0; }
+    .tx-amount.dep { color: var(--green); }
+    .tx-amount.spt { color: var(--red); }
+
+    /* Bottom Nav */
+    #bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 10px 0 calc(10px + var(--safe-bottom));
+      display: flex; justify-content: space-around;
+      z-index: 50;
+    }
+    .nav-btn {
+      background: none; border: none; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 0 30px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .nav-btn span.ni { font-size: 22px; }
+    .nav-btn span.nl { font-size: 11px; font-weight: 600; color: var(--dim); transition: color 0.2s; }
+    .nav-btn.active span.nl { color: var(--accent); }
+    .nav-dot {
+      width: 6px; height: 6px; border-radius: 3px;
+      background: var(--accent); margin: 0 auto;
+      display: none;
+    }
+    .nav-btn.active .nav-dot { display: block; }
+
+    /* Modal Overlay */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.78);
+      display: flex; align-items: flex-end; justify-content: center;
+      z-index: 200; padding: 0 0;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .modal {
+      width: 100%; max-width: 500px;
+      background: #1A1A24;
+      border-radius: 28px 28px 0 0;
+      padding: 20px 20px calc(32px + var(--safe-bottom));
+      border: 1px solid var(--border);
+      border-bottom: none;
+      animation: slideUp 0.28s cubic-bezier(0.34,1.2,0.64,1);
+      max-height: 92vh;
+      overflow-y: auto;
+    }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .modal-handle {
+      width: 40px; height: 4px; background: #333;
+      border-radius: 2px; margin: 0 auto 18px;
+    }
+    .modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 18px; }
+    .modal label { color: var(--muted); font-size: 13px; display: block; margin-bottom: 7px; }
+    .modal input {
+      width: 100%; background: var(--card2);
+      border: 1px solid #333; border-radius: 14px;
+      padding: 13px 15px; color: var(--text);
+      font-size: 15px; font-family: 'DM Sans', sans-serif;
+      outline: none; margin-bottom: 14px;
+    }
+    .modal input.big { font-size: 24px; font-family: 'Space Mono', monospace; }
+    .modal input:focus { border-color: var(--accent); }
+    .icon-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+    .icon-opt {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: var(--card2); border: 2px solid transparent;
+      font-size: 20px; cursor: pointer; display: flex;
+      align-items: center; justify-content: center;
+      transition: border-color 0.15s, background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .icon-opt.sel { border-color: var(--accent); background: rgba(124,110,250,0.15); }
+    .source-opts { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+    .source-opt {
+      background: var(--card2); border: 2px solid transparent;
+      border-radius: 14px; padding: 11px 14px;
+      cursor: pointer; display: flex; align-items: center; gap: 10px;
+      transition: border-color 0.15s, background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .source-opt.sel-dep { border-color: var(--green); background: rgba(85,239,196,0.08); }
+    .source-opt.sel-spt { border-color: var(--red); background: rgba(255,107,107,0.08); }
+    .source-opt span.sn { color: var(--text); font-weight: 600; font-size: 14px; flex: 1; }
+    .source-opt span.sb { font-family: 'Space Mono', monospace; color: var(--green); font-size: 12px; }
+    .btn-row { display: flex; gap: 10px; }
+    .btn-cancel {
+      flex: 1; background: var(--card2); border: none;
+      border-radius: 16px; padding: 15px; color: var(--muted);
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-cancel:active { opacity: 0.7; }
+    .btn-primary {
+      flex: 2; border: none; border-radius: 16px; padding: 15px;
+      font-size: 15px; font-weight: 700; cursor: pointer; color: #fff;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform 0.1s;
+    }
+    .btn-primary:active { transform: scale(0.96); }
+    .btn-primary.purple { background: linear-gradient(135deg, #7C6EFA, #A855F7); }
+    .btn-primary.green { background: linear-gradient(135deg, #00B894, #55EFC4); color: #0F2420; }
+    .btn-primary.red { background: linear-gradient(135deg, #C0392B, #FF6B6B); }
+
+    /* Toast */
+    #toast {
+      position: fixed; top: 24px; left: 50%; transform: translateX(-50%);
+      padding: 10px 20px; border-radius: 30px;
+      font-size: 13px; font-weight: 600;
+      z-index: 999; white-space: nowrap;
+      pointer-events: none;
+      animation: toastIn 0.25s ease;
+      display: none;
+    }
+    #toast.show { display: block; }
+    #toast.success { background: #1A2D1F; border: 1px solid var(--green); color: var(--green); }
+    #toast.warn { background: #2D1F12; border: 1px solid var(--yellow); color: var(--yellow); }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+    /* Install banner */
+    #install-banner {
+      background: linear-gradient(135deg, #1E1A3A, #2D2060);
+      border: 1px solid rgba(124,110,250,0.3);
+      border-radius: 16px; margin: 14px 16px 0;
+      padding: 12px 14px; display: flex; align-items: center; gap: 12px;
+    }
+    #install-banner p { font-size: 12px; color: rgba(255,255,255,0.7); flex: 1; line-height: 1.5; }
+    #install-banner p strong { color: #fff; }
+    #install-btn {
+      background: var(--accent); border: none; border-radius: 12px;
+      padding: 8px 14px; color: #fff; font-size: 12px; font-weight: 700;
+      cursor: pointer; white-space: nowrap; flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #close-banner {
+      background: none; border: none; color: var(--dim);
+      font-size: 18px; cursor: pointer; flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <!-- Status Bar -->
+  <div class="status-bar" style="background: var(--surface); flex-shrink:0;">
+    <span id="clock">9:41</span>
+    <span>🔋</span>
+  </div>
+
+  <!-- Scrollable Content -->
+  <div id="scroll-area" style="background: var(--bg);">
+    <!-- HOME PAGE -->
+    <div id="page-home">
+      <div class="page-header">
+        <div>
+          <p>My Wallet</p>
+          <h1>Finance</h1>
+        </div>
+        <div class="avatar">👤</div>
+      </div>
+
+      <!-- Install Banner -->
+      <div id="install-banner" style="display:none;">
+        <p>📲 <strong>Install as App</strong><br>Tap below to add to Home Screen</p>
+        <button id="install-btn">Install</button>
+        <button id="close-banner">✕</button>
+      </div>
+
+      <!-- Balance Card -->
+      <div class="balance-card">
+        <p class="balance-label">Net Balance</p>
+        <h2 class="balance-amount" id="net-balance">৳0.00</h2>
+        <p class="balance-sub" id="source-count">Across 0 sources</p>
+        <div class="balance-row">
+          <div class="balance-stat dep">
+            <p>↓ DEPOSITED</p>
+            <h4 id="total-dep">৳0.00</h4>
+          </div>
+          <div class="balance-stat spt">
+            <p>↑ SPENT</p>
+            <h4 id="total-spt">৳0.00</h4>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="quick-actions">
+        <button class="qa-btn" onclick="openModal('modal-source')" style="border: 1px solid rgba(124,110,250,0.15);">
+          <div class="qa-icon" style="background: rgba(124,110,250,0.18);">➕</div>
+          <span>Add Source</span>
+        </button>
+        <button class="qa-btn" onclick="openDeposit()" style="border: 1px solid rgba(85,239,196,0.15);">
+          <div class="qa-icon" style="background: rgba(85,239,196,0.18);">💵</div>
+          <span>Deposit</span>
+        </button>
+        <button class="qa-btn" onclick="openSpend()" style="border: 1px solid rgba(255,107,107,0.15);">
+          <div class="qa-icon" style="background: rgba(255,107,107,0.18);">💸</div>
+          <span>Spend</span>
+        </button>
+      </div>
+
+      <!-- Sources -->
+      <div class="section-header">
+        <h3>Sources</h3>
+        <span id="src-count-label">0 total</span>
+      </div>
+      <div class="source-list" id="source-list">
+        <div class="empty-state" id="src-empty">
+          <div class="ei">🏦</div>
+          <p>No sources yet. Add one!</p>
+        </div>
+      </div>
+      <div style="height:8px;"></div>
+    </div>
+
+    <!-- HISTORY PAGE -->
+    <div id="page-history" style="display:none;">
+      <div class="page-header" style="margin-bottom:12px;">
+        <div>
+          <p>All Transactions</p>
+          <h1>History</h1>
+        </div>
+      </div>
+
+      <!-- Source Filter Chips -->
+      <div class="filter-scroll" id="filter-chips">
+        <!-- built by JS -->
+      </div>
+
+      <!-- Type Filter Row -->
+      <div class="filter-type-row">
+        <button class="type-chip active-all" id="type-all" onclick="setTypeFilter('all')">🔀 All</button>
+        <button class="type-chip" id="type-dep" onclick="setTypeFilter('deposit')">↓ Deposits</button>
+        <button class="type-chip" id="type-spt" onclick="setTypeFilter('spend')">↑ Expenses</button>
+      </div>
+
+      <!-- Summary bar -->
+      <div class="filter-summary">
+        <span id="filter-count">0 transactions</span>
+        <strong id="filter-total"></strong>
+      </div>
+
+      <div class="tx-list" id="tx-list">
+        <div class="empty-state" id="tx-empty">
+          <div class="ei">📋</div>
+          <p>No transactions yet</p>
+        </div>
+      </div>
+      <div style="height:8px;"></div>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div id="bottom-nav">
+    <button class="nav-btn active" id="nav-home" onclick="switchTab('home')">
+      <span class="ni">🏠</span>
+      <span class="nl">Home</span>
+      <div class="nav-dot"></div>
+    </button>
+    <button class="nav-btn" id="nav-history" onclick="switchTab('history')">
+      <span class="ni">📋</span>
+      <span class="nl">History</span>
+      <div class="nav-dot"></div>
+    </button>
+  </div>
+</div>
+
+<!-- ===== MODALS ===== -->
+
+<!-- Add Source Modal -->
+<div class="overlay" id="modal-source" style="display:none;" onclick="closeOnBg(event,'modal-source')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>➕ Add Money Source</h3>
+    <label>Source Name</label>
+    <input id="src-name" type="text" placeholder="e.g. Salary, Freelance, Gift" />
+    <label>Choose Icon</label>
+    <div class="icon-grid" id="icon-grid"></div>
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closeModal('modal-source')">Cancel</button>
+      <button class="btn-primary purple" onclick="addSource()">Add Source</button>
+    </div>
+  </div>
+</div>
+
+<!-- Deposit Modal -->
+<div class="overlay" id="modal-deposit" style="display:none;" onclick="closeOnBg(event,'modal-deposit')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3 style="color:var(--green);">💵 Add Deposit</h3>
+    <label>Select Source</label>
+    <div class="source-opts" id="dep-sources"></div>
+    <label>Amount (৳)</label>
+    <input id="dep-amount" class="big" type="number" inputmode="decimal" placeholder="0.00" />
+    <input id="dep-note" type="text" placeholder="Note (optional)" />
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closeModal('modal-deposit')">Cancel</button>
+      <button class="btn-primary green" onclick="addDeposit()">Deposit Money</button>
+    </div>
+  </div>
+</div>
+
+<!-- Spend Modal -->
+<div class="overlay" id="modal-spend" style="display:none;" onclick="closeOnBg(event,'modal-spend')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3 style="color:var(--red);">💸 Record Expense</h3>
+    <label>From Source</label>
+    <div class="source-opts" id="spt-sources"></div>
+    <label>Amount (৳)</label>
+    <input id="spt-amount" class="big" type="number" inputmode="decimal" placeholder="0.00" />
+    <input id="spt-note" type="text" placeholder="What did you spend on? (optional)" />
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closeModal('modal-spend')">Cancel</button>
+      <button class="btn-primary red" onclick="addSpend()">Record Expense</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ─── Data ───────────────────────────────────────────────
+const COLORS = [
+  {bg:"#FF6B6B"},{bg:"#4ECDC4"},{bg:"#F7B731"},
+  {bg:"#A29BFE"},{bg:"#FD79A8"},{bg:"#55EFC4"},
+  {bg:"#FDCB6E"},{bg:"#74B9FF"},
+];
+const ICONS = ["💼","🏦","💳","🎁","🏠","💰","📦","🛒","⚡","🎓","🍔","🚗","✈️","📱","👕","💊","🎮","📚"];
+
+let sources = [];
+let transactions = [];
+let selectedDepSrc = null;
+let selectedSptSrc = null;
+let selectedIcon = "💼";
+
+// ─── Persist ─────────────────────────────────────────────
+function save() {
+  try {
+    localStorage.setItem('mm_sources', JSON.stringify(sources));
+    localStorage.setItem('mm_tx', JSON.stringify(transactions));
+  } catch(e) {}
+}
+function load() {
+  try {
+    const s = localStorage.getItem('mm_sources');
+    const t = localStorage.getItem('mm_tx');
+    if (s) sources = JSON.parse(s);
+    if (t) transactions = JSON.parse(t);
+  } catch(e) {}
+}
+
+// ─── Format ──────────────────────────────────────────────
+function fmt(n) {
+  return new Intl.NumberFormat('en-BD',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
+}
+
+// ─── Toast ───────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = ''; }, 2400);
+}
+
+// ─── Clock ───────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  let h = now.getHours(), m = now.getMinutes();
+  document.getElementById('clock').textContent =
+    `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+}
+setInterval(updateClock, 10000); updateClock();
+
+// ─── Tab Switch ──────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById('page-home').style.display = tab==='home' ? 'block' : 'none';
+  document.getElementById('page-history').style.display = tab==='history' ? 'block' : 'none';
+  document.getElementById('nav-home').className = 'nav-btn' + (tab==='home' ? ' active' : '');
+  document.getElementById('nav-history').className = 'nav-btn' + (tab==='history' ? ' active' : '');
+  document.getElementById('scroll-area').scrollTop = 0;
+  if (tab==='history') renderHistory();
+}
+
+// ─── Modals ──────────────────────────────────────────────
+function openModal(id) {
+  document.getElementById(id).style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  document.getElementById(id).style.display = 'none';
+  document.body.style.overflow = '';
+}
+function closeOnBg(e, id) {
+  if (e.target.classList.contains('overlay')) closeModal(id);
+}
+
+// ─── Icon Grid ───────────────────────────────────────────
+function buildIconGrid() {
+  const grid = document.getElementById('icon-grid');
+  grid.innerHTML = '';
+  ICONS.forEach(ic => {
+    const btn = document.createElement('button');
+    btn.className = 'icon-opt' + (selectedIcon===ic ? ' sel' : '');
+    btn.textContent = ic;
+    btn.onclick = () => {
+      selectedIcon = ic;
+      buildIconGrid();
+    };
+    grid.appendChild(btn);
+  });
+}
+
+// ─── Add Source ──────────────────────────────────────────
+function addSource() {
+  const name = document.getElementById('src-name').value.trim();
+  if (!name) { showToast('Enter a source name!', 'warn'); return; }
+  const color = COLORS[sources.length % COLORS.length];
+  sources.push({ id: Date.now(), name, icon: selectedIcon, color, totalDeposited: 0, totalSpent: 0 });
+  save();
+  document.getElementById('src-name').value = '';
+  selectedIcon = '💼';
+  closeModal('modal-source');
+  renderAll();
+  showToast(`"${name}" added!`);
+}
+
+// ─── Open Deposit / Spend ─────────────────────────────────
+function openDeposit() {
+  if (!sources.length) { showToast('Add a source first!', 'warn'); return; }
+  selectedDepSrc = null;
+  document.getElementById('dep-amount').value = '';
+  document.getElementById('dep-note').value = '';
+  renderSourceOpts('dep-sources', 'dep');
+  openModal('modal-deposit');
+}
+function openSpend() {
+  if (!sources.length) { showToast('Add a source first!', 'warn'); return; }
+  selectedSptSrc = null;
+  document.getElementById('spt-amount').value = '';
+  document.getElementById('spt-note').value = '';
+  renderSourceOpts('spt-sources', 'spt');
+  openModal('modal-spend');
+}
+function renderSourceOpts(containerId, type) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  sources.forEach(src => {
+    const bal = src.totalDeposited - src.totalSpent;
+    const isSel = type==='dep' ? selectedDepSrc?.id===src.id : selectedSptSrc?.id===src.id;
+    const div = document.createElement('div');
+    div.className = 'source-opt' + (isSel ? (type==='dep' ? ' sel-dep' : ' sel-spt') : '');
+    div.innerHTML = `<span style="font-size:20px;">${src.icon}</span><span class="sn">${src.name}</span><span class="sb">৳${fmt(bal)}</span>`;
+    div.onclick = () => {
+      if (type==='dep') selectedDepSrc = src;
+      else selectedSptSrc = src;
+      renderSourceOpts(containerId, type);
+    };
+    c.appendChild(div);
+  });
+}
+
+// ─── Add Deposit ──────────────────────────────────────────
+function addDeposit() {
+  const amt = parseFloat(document.getElementById('dep-amount').value);
+  const note = document.getElementById('dep-note').value.trim();
+  if (!selectedDepSrc) { showToast('Select a source!', 'warn'); return; }
+  if (isNaN(amt) || amt <= 0) { showToast('Enter a valid amount!', 'warn'); return; }
+  sources = sources.map(s => s.id===selectedDepSrc.id ? {...s, totalDeposited: s.totalDeposited+amt} : s);
+  transactions.unshift({ id: Date.now(), type:'deposit', sourceId: selectedDepSrc.id, sourceName: selectedDepSrc.name, sourceIcon: selectedDepSrc.icon, amount: amt, note, date: new Date().toISOString() });
+  save();
+  closeModal('modal-deposit');
+  renderAll();
+  showToast(`৳${fmt(amt)} deposited!`);
+}
+
+// ─── Add Spend ────────────────────────────────────────────
+function addSpend() {
+  const amt = parseFloat(document.getElementById('spt-amount').value);
+  const note = document.getElementById('spt-note').value.trim();
+  if (!selectedSptSrc) { showToast('Select a source!', 'warn'); return; }
+  if (isNaN(amt) || amt <= 0) { showToast('Enter a valid amount!', 'warn'); return; }
+  sources = sources.map(s => s.id===selectedSptSrc.id ? {...s, totalSpent: s.totalSpent+amt} : s);
+  transactions.unshift({ id: Date.now(), type:'spend', sourceId: selectedSptSrc.id, sourceName: selectedSptSrc.name, sourceIcon: selectedSptSrc.icon, amount: amt, note, date: new Date().toISOString() });
+  save();
+  closeModal('modal-spend');
+  renderAll();
+  showToast(`৳${fmt(amt)} spent recorded!`, 'warn');
+}
+
+// ─── Delete Source ────────────────────────────────────────
+function deleteSource(id) {
+  if (!confirm('Delete this source and its data?')) return;
+  sources = sources.filter(s => s.id !== id);
+  transactions = transactions.filter(t => t.sourceId !== id);
+  save();
+  renderAll();
+  showToast('Source removed.');
+}
+
+// ─── Render ───────────────────────────────────────────────
+function renderAll() {
+  renderBalances();
+  renderSources();
+}
+function renderBalances() {
+  const dep = sources.reduce((a,s)=>a+s.totalDeposited,0);
+  const spt = sources.reduce((a,s)=>a+s.totalSpent,0);
+  const bal = dep - spt;
+  document.getElementById('net-balance').textContent = '৳'+fmt(bal);
+  document.getElementById('total-dep').textContent = '৳'+fmt(dep);
+  document.getElementById('total-spt').textContent = '৳'+fmt(spt);
+  document.getElementById('net-balance').style.color = bal < 0 ? 'var(--red)' : '#fff';
+  document.getElementById('source-count').textContent = `Across ${sources.length} source${sources.length!==1?'s':''}`;
+  document.getElementById('src-count-label').textContent = `${sources.length} total`;
+}
+function renderSources() {
+  const list = document.getElementById('source-list');
+  const empty = document.getElementById('src-empty');
+  // Remove old cards (not the empty state)
+  Array.from(list.children).forEach(c => { if (c !== empty) c.remove(); });
+  if (!sources.length) { empty.style.display='block'; return; }
+  empty.style.display='none';
+  sources.forEach(src => {
+    const bal = src.totalDeposited - src.totalSpent;
+    const pct = src.totalDeposited > 0 ? Math.min(100,(src.totalSpent/src.totalDeposited)*100) : 0;
+    const barColor = pct>80 ? 'var(--red)' : pct>50 ? 'var(--yellow)' : 'var(--green)';
+    const card = document.createElement('div');
+    card.className='source-card';
+    card.style.borderLeft = `3px solid ${src.color.bg}`;
+    card.innerHTML = `
+      <div class="source-top">
+        <div class="source-icon" style="background:${src.color.bg}22;">${src.icon}</div>
+        <div class="source-info">
+          <h4>${src.name}</h4>
+          <p style="color:${bal>=0?'var(--green)':'var(--red)'};">৳${fmt(bal)}</p>
+        </div>
+        <button class="del-btn" onclick="deleteSource(${src.id})">🗑</button>
+      </div>
+      <div class="source-stats">
+        <div class="source-stat d">
+          <p>DEPOSITED</p><h5>৳${fmt(src.totalDeposited)}</h5>
+        </div>
+        <div class="source-stat s">
+          <p>SPENT</p><h5>৳${fmt(src.totalSpent)}</h5>
+        </div>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" style="width:${pct}%;background:${barColor};"></div>
+      </div>
+      <p class="progress-label">${pct.toFixed(0)}% spent</p>
+    `;
+    list.appendChild(card);
+  });
+}
+// ─── Filter State ─────────────────────────────────────────
+let filterSourceId = 'all'; // 'all' or source id (number)
+let filterType = 'all';     // 'all' | 'deposit' | 'spend'
+
+function setSourceFilter(id) {
+  filterSourceId = id;
+  renderFilterChips();
+  renderHistory();
+}
+function setTypeFilter(type) {
+  filterType = type;
+  // update type chip styles
+  ['all','dep','spt'].forEach(k => {
+    const el = document.getElementById('type-'+k);
+    el.className = 'type-chip';
+  });
+  if (type==='all')     document.getElementById('type-all').className = 'type-chip active-all';
+  if (type==='deposit') document.getElementById('type-dep').className = 'type-chip active-dep';
+  if (type==='spend')   document.getElementById('type-spt').className = 'type-chip active-spt';
+  renderHistory();
+}
+
+function renderFilterChips() {
+  const container = document.getElementById('filter-chips');
+  container.innerHTML = '';
+
+  // "All" chip
+  const allChip = document.createElement('button');
+  allChip.className = 'filter-chip all-chip' + (filterSourceId==='all' ? '' : ' inactive');
+  allChip.innerHTML = '🔵 All Sources';
+  allChip.onclick = () => setSourceFilter('all');
+  container.appendChild(allChip);
+
+  // One chip per source
+  sources.forEach(src => {
+    const isActive = filterSourceId === src.id;
+    const chip = document.createElement('button');
+    chip.className = 'filter-chip src-chip' + (isActive ? ' active' : '');
+    chip.style.background = isActive ? src.color.bg + '33' : '';
+    chip.style.border = isActive ? `1.5px solid ${src.color.bg}` : '1.5px solid transparent';
+    chip.style.color = isActive ? '#fff' : '';
+    chip.innerHTML = `${src.icon} ${src.name}`;
+    chip.onclick = () => setSourceFilter(src.id);
+    container.appendChild(chip);
+  });
+}
+
+function renderHistory() {
+  renderFilterChips();
+  const list = document.getElementById('tx-list');
+  const empty = document.getElementById('tx-empty');
+  Array.from(list.children).forEach(c => { if(c!==empty) c.remove(); });
+
+  // Apply filters
+  let filtered = transactions;
+  if (filterSourceId !== 'all') {
+    filtered = filtered.filter(t => t.sourceId === filterSourceId);
+  }
+  if (filterType !== 'all') {
+    filtered = filtered.filter(t => t.type === filterType);
+  }
+
+  // Summary
+  const depTotal = filtered.filter(t=>t.type==='deposit').reduce((a,t)=>a+t.amount,0);
+  const sptTotal = filtered.filter(t=>t.type==='spend').reduce((a,t)=>a+t.amount,0);
+  document.getElementById('filter-count').textContent = `${filtered.length} transaction${filtered.length!==1?'s':''}`;
+  if (filterType==='all') {
+    document.getElementById('filter-total').textContent = filtered.length ? `+৳${fmt(depTotal)}  -৳${fmt(sptTotal)}` : '';
+  } else if (filterType==='deposit') {
+    document.getElementById('filter-total').textContent = filtered.length ? `+৳${fmt(depTotal)}` : '';
+  } else {
+    document.getElementById('filter-total').textContent = filtered.length ? `-৳${fmt(sptTotal)}` : '';
+  }
+
+  if (!filtered.length) { empty.style.display='block'; return; }
+  empty.style.display='none';
+
+  filtered.forEach(tx => {
+    const d = new Date(tx.date);
+    const dateStr = d.toLocaleDateString('en-BD',{day:'numeric',month:'short',year:'numeric'});
+    const src = sources.find(s=>s.id===tx.sourceId);
+    const borderColor = src ? src.color.bg+'55' : (tx.type==='deposit' ? 'rgba(85,239,196,0.3)' : 'rgba(255,107,107,0.3)');
+
+    // Wrapper
+    const wrapper = document.createElement('div');
+    wrapper.className = 'tx-wrapper';
+
+    // Red bg (revealed on swipe)
+    wrapper.innerHTML = `<div class="tx-delete-bg"><p>Delete</p><span>🗑</span></div>`;
+
+    // Card
+    const div = document.createElement('div');
+    div.className='tx-card';
+    div.style.borderLeft = `3px solid ${borderColor}`;
+    div.innerHTML=`
+      <div class="tx-icon ${tx.type==='deposit'?'dep':'spt'}">${tx.sourceIcon}</div>
+      <div class="tx-info">
+        <h4>${tx.sourceName}</h4>
+        <p>${tx.note || (tx.type==='deposit'?'Deposit':'Expense')} · ${dateStr}</p>
+      </div>
+      <span class="tx-amount ${tx.type==='deposit'?'dep':'spt'}">${tx.type==='deposit'?'+':'-'}৳${fmt(tx.amount)}</span>
+      <div style="display:flex;flex-direction:column;gap:5px;margin-left:6px;flex-shrink:0;">
+        <button class="tx-edit-btn" style="background:rgba(124,110,250,0.15);border:none;border-radius:10px;padding:6px 8px;cursor:pointer;font-size:15px;-webkit-tap-highlight-color:transparent;">✏️</button>
+        <button class="tx-del-btn" data-txid="${tx.id}" style="background:rgba(255,107,107,0.13);border:none;border-radius:10px;padding:6px 8px;cursor:pointer;font-size:15px;-webkit-tap-highlight-color:transparent;">🗑</button>
+      </div>
+    `;
+    div.querySelector('.tx-edit-btn').addEventListener('click', () => {
+      showEditSheet(tx);
+    });
+    // attach delete handler safely
+    div.querySelector('.tx-del-btn').addEventListener('click', () => {
+      showDeleteConfirm(tx);
+    });
+
+    // Swipe logic
+    let startX = 0, currentX = 0, swiping = false;
+    const THRESHOLD = 80;
+
+    div.addEventListener('touchstart', e => {
+      startX = e.touches[0].clientX;
+      swiping = true;
+      div.classList.add('swiping');
+    }, {passive:true});
+
+    div.addEventListener('touchmove', e => {
+      if (!swiping) return;
+      currentX = e.touches[0].clientX - startX;
+      if (currentX < 0) {
+        div.style.transform = `translateX(${Math.max(currentX, -120)}px)`;
+      }
+    }, {passive:true});
+
+    div.addEventListener('touchend', () => {
+      swiping = false;
+      div.classList.remove('swiping');
+      if (currentX < -THRESHOLD) {
+        // Confirm delete
+        div.style.transform = 'translateX(-90px)';
+        showDeleteConfirm(tx);
+      } else {
+        div.style.transform = 'translateX(0)';
+      }
+      currentX = 0;
+    });
+
+    // Also long-press or tap delete button fallback
+    div.addEventListener('click', e => {
+      // only if already swiped open
+    });
+
+    wrapper.appendChild(div);
+    list.appendChild(wrapper);
+  });
+}
+
+// ─── Delete Transaction ───────────────────────────────────
+function showDeleteConfirm(tx) {
+  // Remove any existing confirm sheet
+  const existing = document.getElementById('del-confirm-sheet');
+  if (existing) existing.remove();
+
+  const sheet = document.createElement('div');
+  sheet.className = 'del-confirm';
+  sheet.id = 'del-confirm-sheet';
+
+  const amtColor = tx.type==='deposit' ? 'var(--green)' : 'var(--red)';
+  const amtSign  = tx.type==='deposit' ? '+' : '-';
+  const d = new Date(tx.date);
+  const dateStr = d.toLocaleDateString('en-BD',{day:'numeric',month:'short',year:'numeric'});
+
+  sheet.innerHTML = `
+    <div class="del-confirm-box">
+      <div class="handle"></div>
+      <h3>🗑 Delete Transaction?</h3>
+      <p>This will permanently remove the entry and reverse its effect on the source balance.</p>
+      <div class="del-tx-preview">
+        <span class="di">${tx.sourceIcon}</span>
+        <div>
+          <h4>${tx.sourceName}</h4>
+          <p>${tx.note || (tx.type==='deposit'?'Deposit':'Expense')} · ${dateStr}</p>
+        </div>
+        <span class="da" style="color:${amtColor};">${amtSign}৳${fmt(tx.amount)}</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn-cancel" id="del-cancel-btn">Keep It</button>
+        <button class="btn-primary red" id="del-confirm-btn">Yes, Delete</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(sheet);
+
+  document.getElementById('del-cancel-btn').onclick = () => {
+    sheet.remove();
+  };
+  document.getElementById('del-confirm-btn').onclick = () => {
+    deleteTransaction(tx.id);
+    sheet.remove();
+  };
+  sheet.addEventListener('click', e => {
+    if (e.target === sheet) {
+      sheet.remove();
+    }
+  });
+}
+
+function deleteTransaction(txId) {
+  const tx = transactions.find(t => t.id === txId);
+  if (!tx) return;
+  // Reverse the effect on source
+  sources = sources.map(s => {
+    if (s.id !== tx.sourceId) return s;
+    if (tx.type === 'deposit') return {...s, totalDeposited: Math.max(0, s.totalDeposited - tx.amount)};
+    if (tx.type === 'spend')   return {...s, totalSpent: Math.max(0, s.totalSpent - tx.amount)};
+    return s;
+  });
+  transactions = transactions.filter(t => t.id !== txId);
+  save();
+  renderAll();
+  renderHistory();
+  showToast('Transaction deleted.', 'warn');
+}
+
+// ─── Edit Transaction ─────────────────────────────────────
+function showEditSheet(tx) {
+  const existing = document.getElementById('edit-sheet-el');
+  if (existing) existing.remove();
+
+  const amtColor = tx.type==='deposit' ? 'var(--green)' : 'var(--red)';
+  const typeLabel = tx.type==='deposit' ? '💵 Deposit' : '💸 Expense';
+
+  const sheet = document.createElement('div');
+  sheet.className = 'edit-sheet';
+  sheet.id = 'edit-sheet-el';
+  sheet.innerHTML = `
+    <div class="edit-sheet-box">
+      <div class="handle"></div>
+      <h3>✏️ Edit Transaction</h3>
+      <div style="display:flex;align-items:center;gap:10px;background:var(--card2);border-radius:14px;padding:10px 14px;margin-bottom:16px;">
+        <span style="font-size:22px;">${tx.sourceIcon}</span>
+        <div>
+          <p style="color:var(--text);font-weight:600;font-size:14px;">${tx.sourceName}</p>
+          <p style="color:var(--muted);font-size:12px;">${typeLabel}</p>
+        </div>
+        <span style="margin-left:auto;font-family:'Space Mono',monospace;font-size:13px;color:${amtColor};">${tx.type==='deposit'?'+':'-'}৳${fmt(tx.amount)}</span>
+      </div>
+      <label>Amount (৳)</label>
+      <input class="big" id="edit-amount" type="number" inputmode="decimal" value="${tx.amount}" />
+      <label>Description / Note</label>
+      <input id="edit-note" type="text" placeholder="Add a note..." value="${tx.note || ''}" />
+      <div class="btn-row">
+        <button class="btn-cancel" id="edit-cancel-btn">Cancel</button>
+        <button class="btn-primary purple" id="edit-save-btn">Save Changes</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(sheet);
+
+  document.getElementById('edit-cancel-btn').onclick = () => sheet.remove();
+  sheet.addEventListener('click', e => { if (e.target === sheet) sheet.remove(); });
+
+  document.getElementById('edit-save-btn').onclick = () => {
+    const newAmt = parseFloat(document.getElementById('edit-amount').value);
+    const newNote = document.getElementById('edit-note').value.trim();
+    if (isNaN(newAmt) || newAmt <= 0) { showToast('Enter a valid amount!', 'warn'); return; }
+    saveEditTransaction(tx, newAmt, newNote);
+    sheet.remove();
+  };
+}
+
+function saveEditTransaction(oldTx, newAmt, newNote) {
+  const diff = newAmt - oldTx.amount;
+  // Adjust source totals by the difference
+  sources = sources.map(s => {
+    if (s.id !== oldTx.sourceId) return s;
+    if (oldTx.type === 'deposit') return {...s, totalDeposited: Math.max(0, s.totalDeposited + diff)};
+    if (oldTx.type === 'spend')   return {...s, totalSpent: Math.max(0, s.totalSpent + diff)};
+    return s;
+  });
+  // Update transaction
+  transactions = transactions.map(t =>
+    t.id === oldTx.id ? {...t, amount: newAmt, note: newNote} : t
+  );
+  save();
+  renderAll();
+  renderHistory();
+  showToast('Transaction updated!');
+}
+
+// ─── PWA Install ─────────────────────────────────────────
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('install-banner').style.display = 'flex';
+});
+document.getElementById('install-btn').addEventListener('click', async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const result = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    document.getElementById('install-banner').style.display = 'none';
+  }
+});
+document.getElementById('close-banner').addEventListener('click', () => {
+  document.getElementById('install-banner').style.display = 'none';
+});
+
+// ─── Service Worker ───────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  const swContent = `
+    const CACHE = 'money-mgr-v1';
+    self.addEventListener('install', e => {
+      e.waitUntil(caches.open(CACHE).then(c => c.addAll(['./', './index.html'])));
+    });
+    self.addEventListener('fetch', e => {
+      e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+    });
+  `;
+  const blob = new Blob([swContent], {type:'application/javascript'});
+  const url = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(url).catch(()=>{});
+}
+
+// ─── Init ─────────────────────────────────────────────────
+load();
+buildIconGrid();
+renderAll();
+// Re-build icon grid when source modal opens
+document.getElementById('modal-source').addEventListener('click', function(){});
+document.querySelectorAll('.qa-btn')[0].addEventListener('click', () => buildIconGrid());
+</script>
+</body>
+</html>
